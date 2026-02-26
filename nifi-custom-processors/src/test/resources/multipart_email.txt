@@ -1,0 +1,29 @@
+From: newsletter@example.com
+To: subscriber@example.com
+Subject: Monthly Newsletter - January 2024
+Date: Wed, 17 Jan 2024 09:00:00 +0000
+Message-ID: <news-2024-01@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="boundary456"
+
+--boundary456
+Content-Type: text/plain; charset=UTF-8
+
+This is the plain text version of the newsletter.
+- News item 1
+- News item 2
+
+--boundary456
+Content-Type: text/html; charset=UTF-8
+
+<html>
+<body>
+<h1>Monthly Newsletter - January 2024</h1>
+<ul>
+<li>News item 1</li>
+<li>News item 2</li>
+</ul>
+</body>
+</html>
+
+--boundary456--

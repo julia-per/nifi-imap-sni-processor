@@ -1,0 +1,24 @@
+From: support@company.com
+To: user@example.com
+Subject: Invoice attached
+Date: Tue, 16 Jan 2024 14:30:00 +0000
+Message-ID: <67890@company.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="boundary123"
+
+--boundary123
+Content-Type: text/plain; charset=UTF-8
+
+Dear customer,
+
+Please find your invoice attached.
+
+--boundary123
+Content-Type: text/plain; charset=UTF-8
+Content-Disposition: attachment; filename="invoice.txt"
+
+Invoice #INV-2024-001
+Amount: $100.00
+Due date: 2024-02-15
+
+--boundary123--
