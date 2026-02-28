@@ -4,29 +4,29 @@ A production-ready, streaming IMAP processor for Apache NiFi that efficiently fe
 
 ## Features
 
-Core Capabilities: 
-Streaming Architecture - Processes emails in configurable batches without loading all messages into memory.
-Incremental Fetching - Remembers last processed UIDs per folder, only new messages on subsequent polls.
-Dual Authentication - Supports both password-based and OAuth2 (XOAUTH2) authentication.
-Server-Side Filtering - IMAP search criteria combined with incremental UID tracking.
-Recursive Folder Traversal - Search through subfolders with configurable depth limits.
+Core Capabilities:
+<br>Streaming Architecture - Processes emails in configurable batches without loading all messages into memory
+<br>Incremental Fetching - Remembers last processed UIDs per folder, only new messages on subsequent polls
+<br>Dual Authentication - Supports both password-based and OAuth2 (XOAUTH2) authentication
+<br>Server-Side Filtering - IMAP search criteria combined with incremental UID tracking
+<br>Recursive Folder Traversal - Search through subfolders with configurable depth limits
 
 Memory Management:
-Partial Fetch - Streams large messages in chunks to prevent OOM errors.
-Configurable Buffer Size - Control memory usage per message.
-Size Limits - Enforce maximum message and attachment sizes.
-Batch Processing - Process messages in small, controlled batches.
+<br>Partial Fetch - Streams large messages in chunks to prevent OOM errors
+<br>Configurable Buffer Size - Control memory usage per message
+<br>Size Limits - Enforce maximum message and attachment sizes
+<br>Batch Processing - Process messages in small, controlled batches
 
 Error Handling:
-Retry Logic - Exponential backoff for transient failures.
-Dead Letter Queue - Route unprocessable messages to failure relationships.
-Comprehensive Error Attributes - Detailed error information for debugging.
+<br>Retry Logic - Exponential backoff for transient failures
+<br>Dead Letter Queue - Route unprocessable messages to failure relationships
+<br>Comprehensive Error Attributes - Detailed error information for debugging
 
 Attachment Processing:
-Separate FlowFiles - Extract attachments as individual FlowFiles.
-Configurable Limits - Control max attachment size and count per message.
-MIME Type Detection - Preserves attachment metadata.
-Parent Message Reference - Link attachments back to source email.
+<br>Separate FlowFiles - Extract attachments as individual FlowFiles
+<br>Configurable Limits - Control max attachment size and count per message
+<br>MIME Type Detection - Preserves attachment metadata
+<br>Parent Message Reference - Link attachments back to source email
 
 ## How It Works
 
@@ -45,22 +45,22 @@ State is stored cluster-wide, enabling distributed processing of the same mailbo
 
 ## Requirements
 
-Apache NiFi Version 2.7.0 / 
-Java JDK 21 / 
-Maven 3.6 or higher for building from source / 
-IMAP Server any RFC-compliant IMAP server (Gmail, Outlook, Exchange, Dovecot, etc.)
+Apache NiFi Version 2.7.0
+<br>Java JDK 21
+<br>Maven 3.6 or higher for building from source
+<br>IMAP Server any RFC-compliant IMAP server (Gmail, Outlook, Exchange, Dovecot, etc.)
 
 ## Installation
 
 Option 1:
-1. Download the latest NAR file [https://github.com/julia-per/nifi-processor/releases/tag/latest]
+1. Download the latest NAR file [https://github.com/julia-per/nifi--imap-sni-processor/releases/tag/latest]
 2. Copy the NAR file to NiFi's extensions directory:
    cp nifi-custom-nar-*.nar /path/to/nifi/extensions/
 3. Restart NiFi:
    /path/to/nifi/bin/nifi.cmd start
 
 Option 2:
-1. git clone [https://github.com/julia-per/nifi-processor.git]
+1. git clone [https://github.com/julia-per/nifi-imap-sni-processor.git]
 2. cd nifi-processor
 3. mvn clean install
 
@@ -71,175 +71,176 @@ After installation, find "CustomIMAP" in the NiFi processor palette.
 ## Configuration
 
 Basic Settings:
-Host Name - IMAP server address (e.g., imap.gmail.com) - Required.
-Port - Server port - Default 993 - Required.
-Username - Email account username - Required.
-Folder - Folder to read from - Default INBOX - Required.
+<br>Host Name - IMAP server address (supports domains, IPv4, IPv6) - Required
+<br>SNI Hostname - Optional server name for TLS extension (supports domains, IPv4, IPv6)
+<br>Port - Server port - Default 993 - Required
+<br>Username - Email account username - Required
+<br>Folder - Folder to read from - Default INBOX - Required
 
 Authentication:
-Authorization Mode - Choose between Use Password or Use OAuth2 - Required.
-Password - Password when using password mode - Required for password mode.
-OAuth2 Access Token Provider - Controller service when using OAuth2 - Required for OAuth2 mode.
+<br>Authorization Mode - Choose between Use Password or Use OAuth2 - Required
+<br>Password - Password when using password mode - Required for password mode
+<br>OAuth2 Access Token Provider - Controller service when using OAuth2 - Required for OAuth2 mode
 
 Fetch Options:
-Fetch Mode - Headers Only, Full Message, or Attachments Only - Default Full Message.
-Include Headers - Add email headers as attributes - Default true.
-Include Attachments - Extract attachments as separate FlowFiles - Default false.
-Batch Size - Messages per processing cycle - Default 10.
+<br>Fetch Mode - Headers Only, Full Message, or Attachments Only - Default Full Message
+<br>Include Headers - Add email headers as attributes - Default true
+<br>Include Attachments - Extract attachments as separate FlowFiles - Default false
+<br>Batch Size - Messages per processing cycle - Default 10
 
 Advanced Settings:
-Incremental Fetch - Enable UID-based incremental fetching - Default false.
-IMAP Filter - Server-side search criteria e.g., SINCE 01-Jan-2024.
-Recursive Folder Search - Search in subfolders - Default false.
-Max Recursion Depth - Maximum depth for recursive search - Default 5.
-Max Message Size - Skip oversized messages - Default 100 MB.
-Partial Fetch - Stream large messages in chunks - Default true.
-Fetch Buffer Size - Buffer size for partial fetch - Default 100 KB.
-Mark Messages as Read - Set SEEN flag after processing - Default false.
-Delete Messages - Set DELETED flag after processing - Default false.
-Max Retries - Maximum retry attempts - Default 3.
-Retry Backoff - Base time between retries - Default 10 secs.
-Connection Timeout - Timeout for server connection - Default 30 secs.
-Reconnect Interval - Wait time before reconnecting - Default 10 secs.
-Max Attachment Size - Maximum size per attachment - Default 50 MB.
-Max Attachments Per Message - Maximum attachments to extract - Default 100.
-State Folder Identifier - Unique ID for folder state - Default INBOX.
+<br>Incremental Fetch - Enable UID-based incremental fetching - Default false
+<br>IMAP Filter - Server-side search criteria e.g., SINCE 01-Jan-2024
+<br>Recursive Folder Search - Search in subfolders - Default false
+<br> Recursion Depth - Maximum depth for recursive search - Default 5
+<br>Max Message Size - Skip oversized messages - Default 100 MB
+<br> Fetch - Stream large messages in chunks - Default true
+<br>Fetch Buffer Size - Buffer size for partial fetch - Default 100 KB
+<br>Mark Messages as Read - Set SEEN flag after processing - Default false
+<br>Delete Messages - Set DELETED flag after processing - Default false
+<br>Max Retries - Maximum retry attempts - Default 3
+<br>Retry Backoff - Base time between retries - Default 10 secs
+<br>Connection Timeout - Timeout for server connection - Default 30 secs
+<br>Reconnect Interval - Wait time before reconnecting - Default 10 secs
+<br>Max Attachment Size - Maximum size per attachment - Default 50 MB
+<br>Max Attachments Per Message - Maximum attachments to extract - Default 100
+<br>State Folder Identifier - Unique ID for folder state - Default INBOX
 
 ## Relationships
 
-success - Successfully processed messages or headers.
-attachments - Extracted attachments when enabled.
-parse-error - Messages that were received but couldnt be parsed.
-retry - Messages that failed due to temporary issues.
-failure - Messages with critical unrecoverable errors.
-original - Original triggering FlowFile if any.
+success - Successfully processed messages or headers
+<br>attachments - Extracted attachments when enabled
+<br>parse-error - Messages that were received but couldn't be parsed
+<br>retry - Messages that failed due to temporary issues
+<br>failure - Messages with critical unrecoverable errors
+<br>original - Original triggering FlowFile if any
 
 ## Attributes
 
 Email Attributes:
-email.subject - Email subject line.
-email.from - Sender address.
-email.to - Primary recipient.
-email.cc - CC recipient.
-email.received.date - Timestamp when received.
-email.sent.date - Timestamp when sent.
-email.flags - Message flags (SEEN, FLAGGED, etc).
-email.size - Message size in bytes.
-email.uid - Server UID for incremental fetching.
-email.message.id - Message-ID header.
-email.folder - Source folder path.
-email.batch.id - Unique batch identifier.
+<br>email.subject - Email subject line
+<br>email.from - Sender address
+<br>email.to - Primary recipient
+<br>email.cc - CC recipient
+<br>email.received.date - Timestamp when received
+<br>email.sent.date - Timestamp when sent
+<br>email.flags - Message flags (SEEN, FLAGGED, etc)
+<br>email.size - Message size in bytes
+<br>email.uid - Server UID for incremental fetching
+<br>email.message.id - Message-ID header
+<br>email.folder - Source folder path
+<br>email.batch.id - Unique batch identifier
 
 Attachment Attributes:
-attachment.filename - Attachment file name.
-attachment.size - Attachment size.
-attachment.mime.type - MIME type.
-email.parent.message.id - Parent email Message-ID.
+<br>attachment.filename - Attachment file name
+<br>attachment.size - Attachment size
+<br>attachment.mime.type - MIME type
+<br>email.parent.message.id - Parent email Message-ID
 
 Error Attributes:
-error.type - Error classification.
-error.message - Detailed error message.
-retry.count - Number of retry attempts.
+<br>error.type - Error classification
+<br>error.message - Detailed error message
+<br>retry.count - Number of retry attempts
 
 ## Usage Examples
 
 Basic Email Ingestion:
-1. Host Name = imap.gmail.com
-2. Port = 993
-3. Username = user@gmail.com
-4. Password = app-password
-5. Folder = INBOX
-6. Fetch Mode = Headers Only
-7. Include Headers = true
-8. Incremental Fetch = true
+<br>Host Name = imap.gmail.com
+<br>Port = 993
+<br>Username = user@gmail.com
+<br>Password = app-password
+<br>Folder = INBOX
+<br>Fetch Mode = Headers Only
+<br>Include Headers = true
+<br>Incremental Fetch = true
 
 Incremental Fetch with Filtering:
-1. IMAP Filter = SINCE "01-Jan-2024" UNSEEN
-2. Incremental Fetch = true
-3. State Folder Identifier = INBOX
+<br>IMAP Filter = SINCE "01-Jan-2024" UNSEEN
+<br>Incremental Fetch = true
+<br>State Folder Identifier = INBOX
 
 The processor automatically combines: UID ${lastUID}:* SINCE 01-Jan-2024 UNSEEN
 
 Attachment Extraction:
-1. Fetch Mode = Attachments Only
-2. Include Attachments = true
-3. Max Attachment Size = 25 MB
-4. Max Attachments Per Message = 10
+<br>Fetch Mode = Attachments Only
+<br>Include Attachments = true
+<br>Max Attachment Size = 25 MB
+<br>Max Attachments Per Message = 10
 
 Attachments go to attachments relationship, email metadata to success.
 
 ## Performance Tuning
 
 For High-Volume Mailboxes:
-Batch Size = 50.
-Partial Fetch = true.
-Fetch Buffer Size = 500 KB.
-Max Message Size = 50 MB.
-Incremental Fetch = true.
+<br>Batch Size = 50
+<br>Partial Fetch = true
+<br>Fetch Buffer Size = 500 KB
+<br>Max Message Size = 50 MB
+<br>Incremental Fetch = true
 
 For Memory-Constrained Environments:
-Batch Size = 5.
-Partial Fetch = true.
-Fetch Buffer Size = 100 KB.
-Max Message Size = 10 MB.
+<br>Batch Size = 5
+<br>Partial Fetch = true
+<br>Fetch Buffer Size = 100 KB
+<br>Max Message Size = 10 MB
 
 For Real-Time Processing:
-Reconnect Interval = 5 secs.
-Connection Timeout = 10 secs.
-Incremental Fetch = true.
+<br>Reconnect Interval = 5 secs
+<br>Connection Timeout = 10 secs
+<br>Incremental Fetch = true
 
 ## Troubleshooting
 
 Common Issues:
 
 Connection Refused:
-Verify host and port.
-Check network connectivity.
-Ensure IMAP access is enabled.
+<br>Verify host and port.
+<br>Check network connectivity.
+<br>Ensure IMAP access is enabled.
 
 Authentication Failed:
-For Gmail use App Password not regular password.
-For OAuth2 verify token provider configuration.
-Check username format usually full email.
+<br>For Gmail use App Password not regular password.
+<br>For OAuth2 verify token provider configuration.
+<br>Check username format usually full email.
 
 No Messages Found:
-Verify folder name exists.
-Check IMAP filter syntax.
-Enable debug logging to see raw IMAP communication.
+<br>Verify folder name exists.
+<br>Check IMAP filter syntax.
+<br>Enable debug logging to see raw IMAP communication.
 
 Memory Issues:
-Enable Partial Fetch.
-Reduce Batch Size.
-Decrease Max Message Size.
+<br>Enable Partial Fetch.
+<br>Reduce Batch Size.
+<br>Decrease Max Message Size.
 
 Enable Debug Logging:
-Add to conf/logback.xml:
-<logger name="org.custom.processors.CustomIMAP" level="DEBUG"/>
+<br>Add to conf/logback.xml:
+<br><logger name="org.custom.processors.CustomIMAP" level="DEBUG"/>
 
 ## Building from Source
 
 Clone repository:
-git clone [https://github.com/julia-per/nifi-processor.git]
-cd nifi-processor
+<br>git clone [https://github.com/julia-per/nifi-imap-sni-processor.git]
+<br>cd nifi-processor
 
 Build with tests:
-mvn clean install
+<br>mvn clean install
 
 Build without tests:
-mvn clean install -DskipTests
+<br>mvn clean install -DskipTests
 
 Install to local Maven repository:
-mvn clean install
+<br>mvn clean install
 
 Project structure:
-nifi-custom-processors - Processor implementation
-  src/main/java/org/custom/processors
-    CustomIMAP.java
-    CustomIMAPConnection.java
-    CustomIMAPMessageProcessor.java
-    IMAPFilterParser.java
-  src/main/resources/META-INF/services/org.apache.nifi.processor.Processor
-nifi-custom-imap-nar - NAR packaging
+<br>nifi-custom-processors - Processor implementation
+<br> -src/main/java/org/custom/processors
+<br>  ---CustomIMAP.java
+<br>  ---CustomIMAPConnection.java
+<br> ---CustomIMAPMessageProcessor.java
+<br>---IMAPFilterParser.java
+<br> -src/main/resources/META-INF/services/org.apache.nifi.processor.Processor
+<br>nifi-custom-imap-nar - NAR packaging
 
 ## License
 
