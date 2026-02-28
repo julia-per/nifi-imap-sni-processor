@@ -1,9 +1,13 @@
 package org.custom.processors;
 
+import com.sun.mail.imap.IMAPStore;
 import org.apache.nifi.logging.ComponentLog;
 import org.apache.nifi.oauth2.OAuth2AccessTokenProvider;
 
-import javax.mail.*;
+import javax.mail.Folder;
+import javax.mail.MessagingException;
+import javax.mail.Session;
+import javax.mail.Store;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -20,7 +24,8 @@ public class CustomIMAPConnection {
         this.logger = logger;
     }
 
-    public synchronized boolean connect(String host, int port, String user, String password,
+    public synchronized boolean connect(String host, String sniHostname, int port,
+                                        String user, String password,
                                         String authMode, String folder,
                                         boolean useSsl, boolean useTls,
                                         boolean markRead, boolean deleteMessages,
@@ -29,7 +34,7 @@ public class CustomIMAPConnection {
                                         OAuth2AccessTokenProvider tokenProvider) {
 
         try {
-            Properties props = getProperties(host, port, useSsl, useTls,
+            Properties props = getProperties(host, sniHostname, port, useSsl, useTls,
                     partialFetch, fetchBufferSize,
                     connectionTimeoutMs, authMode);
 
@@ -72,16 +77,6 @@ public class CustomIMAPConnection {
         Folder f = folderRef.getAndSet(null);
         Store s = storeRef.getAndSet(null);
 
-        if (s != null && s instanceof com.sun.mail.imap.IMAPStore) {
-            try {
-                com.sun.mail.imap.IMAPStore imapStore = (com.sun.mail.imap.IMAPStore) s;
-                imapStore.close();
-                logger.debug("Closed IMAPStore");
-            } catch (Exception e) {
-                logger.debug("Error closing IMAPStore", e);
-            }
-        }
-
         if (f != null) {
             try {
                 if (f.isOpen()) {
@@ -92,7 +87,14 @@ public class CustomIMAPConnection {
             }
         }
 
-        if (s != null) {
+        if (s instanceof IMAPStore) {
+            try {
+                s.close();
+                logger.debug("Closed IMAPStore");
+            } catch (Exception e) {
+                logger.debug("Error closing IMAPStore", e);
+            }
+        } else if (s != null) {
             try {
                 if (s.isConnected()) {
                     s.close();
@@ -105,13 +107,18 @@ public class CustomIMAPConnection {
         logger.info("Disconnect completed");
     }
 
-    public synchronized boolean ensureConnected(String host, int port, String user, String password,
+    public synchronized boolean ensureConnected(String host, String sniHostname, int port,
+                                                String user, String password,
                                                 String authMode, String folder,
                                                 boolean useSsl, boolean useTls,
                                                 boolean markRead, boolean deleteMessages,
                                                 boolean partialFetch, long fetchBufferSize,
                                                 long connectionTimeoutMs, long reconnectIntervalMs,
                                                 OAuth2AccessTokenProvider tokenProvider) {
+
+        if (sniHostname != null && !sniHostname.trim().isEmpty() && !useSsl && !useTls) {
+            logger.warn("SNI hostname provided but encryption is disabled. SNI will be ignored.");
+        }
 
         Store store = storeRef.get();
         Folder imapFolder = folderRef.get();
@@ -134,13 +141,14 @@ public class CustomIMAPConnection {
 
         lastReconnectAttempt = now;
 
-        return connect(host, port, user, password, authMode, folder,
+        return connect(host, sniHostname, port, user, password, authMode, folder,
                 useSsl, useTls, markRead, deleteMessages,
                 partialFetch, fetchBufferSize, connectionTimeoutMs,
                 tokenProvider);
     }
 
-    private Properties getProperties(String host, int port, boolean useSsl, boolean useTls,
+    private Properties getProperties(String host, String sniHostname, int port,
+                                     boolean useSsl, boolean useTls,
                                      boolean partialFetch, long fetchBufferSize,
                                      long connectionTimeoutMs, String authMode) {
         Properties props = new Properties();
@@ -158,14 +166,24 @@ public class CustomIMAPConnection {
         props.setProperty("mail." + protocol + ".fetchsize", String.valueOf(fetchBufferSize));
         props.setProperty("mail." + protocol + ".peek", "true");
 
-        if (useSsl) {
-            props.setProperty("mail." + protocol + ".ssl.enable", "true");
+        if (useSsl || useTls) {
+            String effectiveSni = (sniHostname != null && !sniHostname.trim().isEmpty()) ? sniHostname.trim() : host;
+
+            props.setProperty("mail." + protocol + ".ssl.sni.hostname", effectiveSni);
+            props.setProperty("mail." + protocol + ".ssl.sni.enable", "true");
             props.setProperty("mail." + protocol + ".ssl.checkserveridentity", "true");
-            props.setProperty("mail." + protocol + ".starttls.enable", "false");
-        } else if (useTls) {
-            props.setProperty("mail." + protocol + ".starttls.enable", "true");
-            props.setProperty("mail." + protocol + ".starttls.required", "true");
+
+            if (useSsl) {
+                props.setProperty("mail." + protocol + ".ssl.enable", "true");
+                props.setProperty("mail." + protocol + ".starttls.enable", "false");
+            } else if (useTls) {
+                props.setProperty("mail." + protocol + ".starttls.enable", "true");
+                props.setProperty("mail." + protocol + ".starttls.required", "true");
+                props.setProperty("mail." + protocol + ".ssl.enable", "false");
+            }
+        } else {
             props.setProperty("mail." + protocol + ".ssl.enable", "false");
+            props.setProperty("mail." + protocol + ".starttls.enable", "false");
         }
 
         props.setProperty("mail." + protocol + ".auth", "true");

@@ -35,6 +35,8 @@ import org.apache.nifi.processor.util.StandardValidators;
 import javax.mail.*;
 import javax.mail.search.SearchTerm;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -75,6 +77,18 @@ public class CustomIMAP extends AbstractProcessor {
             .required(true)
             .expressionLanguageSupported(ExpressionLanguageScope.FLOWFILE_ATTRIBUTES)
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+            .build();
+
+    public static final PropertyDescriptor SNI_HOSTNAME = new PropertyDescriptor.Builder()
+            .name("sni-hostname")
+            .displayName("SNI Hostname")
+            .description("""
+                Hostname to send in TLS SNI extension.
+                If not specified, the connection hostname will be used.
+                Useful when connecting through proxies or load balancers.""")
+            .required(false)
+            .expressionLanguageSupported(ExpressionLanguageScope.FLOWFILE_ATTRIBUTES)
+            .addValidator(StandardValidators.ATTRIBUTE_EXPRESSION_LANGUAGE_VALIDATOR)
             .build();
 
     public static final PropertyDescriptor PORT = new PropertyDescriptor.Builder()
@@ -450,6 +464,7 @@ public class CustomIMAP extends AbstractProcessor {
     public List<PropertyDescriptor> getSupportedPropertyDescriptors() {
         List<PropertyDescriptor> descriptors = new ArrayList<>();
         descriptors.add(HOST);
+        descriptors.add(SNI_HOSTNAME);
         descriptors.add(PORT);
         descriptors.add(AUTH_MODE);
         descriptors.add(USERNAME);
@@ -490,6 +505,7 @@ public class CustomIMAP extends AbstractProcessor {
     protected Collection<ValidationResult> customValidate(ValidationContext context) {
         Collection<ValidationResult> results = new ArrayList<>();
 
+        validateHostAndSni(context, results);
         validateSecuritySettings(context, results);
         validateAuthSettings(context, results);
         validateSizeSettings(context, results);
@@ -603,8 +619,8 @@ public class CustomIMAP extends AbstractProcessor {
 
     private ImapConfig readAndValidateConfig(ProcessContext context, ProcessSession session, FlowFile flowFile) {
         ImapConfig config = readConfig(context, flowFile);
-        getLogger().debug("Configuration loaded - Host: {}, Port: {}, User: {}, Folder: {}, Filter: {}, Recursive: {}",
-                config.host, config.port, config.user, config.folder, config.imapFilter, config.recursive);
+        getLogger().debug("Configuration loaded - Host: {}, SNI: {}, Port: {}, User: {}, Folder: {}, Filter: {}, Recursive: {}",
+                config.host, config.sniHostname, config.port, config.user, config.folder, config.imapFilter, config.recursive);
 
         currentConfigRef.set(config);
 
@@ -639,7 +655,7 @@ public class CustomIMAP extends AbstractProcessor {
         OAuth2AccessTokenProvider tokenProvider = context.getProperty(OAUTH2_TOKEN_PROVIDER)
                 .asControllerService(OAuth2AccessTokenProvider.class);
 
-        if (!ensureConnected(context, config, tokenProvider)) {
+        if (!ensureConnected(config, tokenProvider)) {
             handleRetry(session, flowFile, "CONNECTION_ERROR", "Failed to connect to IMAP server", config);
             context.yield();
             return false;
@@ -936,10 +952,10 @@ public class CustomIMAP extends AbstractProcessor {
         }
     }
 
-    private boolean ensureConnected(ProcessContext context, ImapConfig config, OAuth2AccessTokenProvider tokenProvider) {
+    private boolean ensureConnected(ImapConfig config, OAuth2AccessTokenProvider tokenProvider) {
         if (stopped) return false;
         return connectionManager.ensureConnected(
-                config.host, config.port, config.user, config.password,
+                config.host, config.sniHostname, config.port, config.user, config.password,
                 config.authMode, config.folder, config.useSsl, config.useTls,
                 config.markRead, config.deleteMessages, config.partialFetch,
                 config.fetchBufferSize, config.connectionTimeoutMs,
@@ -1029,6 +1045,7 @@ public class CustomIMAP extends AbstractProcessor {
         ImapConfig config = new ImapConfig();
 
         config.host = getStringValue(context, HOST, flowFile);
+        config.sniHostname = getStringValue(context, SNI_HOSTNAME, flowFile);
         config.user = getStringValue(context, USERNAME, flowFile);
         config.folder = getStringValue(context, FOLDER, flowFile);
         config.authMode = getStringValue(context, AUTH_MODE, flowFile);
@@ -1183,6 +1200,35 @@ public class CustomIMAP extends AbstractProcessor {
             config.fetchBufferSize = config.maxMessageSize;
         }
         return true;
+    }
+
+    private void validateHostAndSni(ValidationContext context, Collection<ValidationResult> results) {
+        String host = context.getProperty(HOST).getValue();
+        String sni = context.getProperty(SNI_HOSTNAME).getValue();
+
+        if (host == null || host.trim().isEmpty()) {
+            results.add(new ValidationResult.Builder()
+                    .subject("Host Name")
+                    .valid(false)
+                    .explanation("Host cannot be empty")
+                    .build());
+        }
+
+        if (sni != null && !sni.trim().isEmpty() && isIpAddress(sni)) {
+            results.add(new ValidationResult.Builder()
+                    .subject("SNI Hostname")
+                    .valid(true)
+                    .explanation("SNI with IP address may not work - SNI typically requires a domain name")
+                    .build());
+        }
+
+        if (isIpAddress(host) && (sni == null || sni.trim().isEmpty())) {
+            results.add(new ValidationResult.Builder()
+                    .subject("SNI Hostname")
+                    .valid(true)
+                    .explanation("Host is IP address but SNI not specified. Consider setting SNI hostname for proper TLS handshake")
+                    .build());
+        }
     }
 
     private void validateSecuritySettings(ValidationContext context, Collection<ValidationResult> results) {
@@ -1490,6 +1536,42 @@ public class CustomIMAP extends AbstractProcessor {
         return true;
     }
 
+    private boolean isIpAddress(String host) {
+        if (host == null || host.trim().isEmpty()) return false;
+
+        String trimmed = host.trim();
+        String checkHost = trimmed.replaceAll("^\\[|\\]$", "");
+
+        try {
+            InetAddress addr = InetAddress.getByName(checkHost);
+            String hostAddress = addr.getHostAddress();
+
+            String normalizedInput = checkHost;
+
+            if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+                normalizedInput = trimmed.substring(1, trimmed.length() - 1);
+            }
+
+            return hostAddress.equals(normalizedInput) ||
+                    isIPv6CompressedForm(normalizedInput, hostAddress);
+
+        } catch (UnknownHostException e) {
+            return false;
+        }
+    }
+
+    private boolean isIPv6CompressedForm(String input, String resolved) {
+        if (!resolved.contains(":")) return false;
+
+        try {
+            InetAddress inputAddr = InetAddress.getByName(input);
+            InetAddress resolvedAddr = InetAddress.getByName(resolved);
+            return Arrays.equals(inputAddr.getAddress(), resolvedAddr.getAddress());
+        } catch (UnknownHostException e) {
+            return false;
+        }
+    }
+
     private int getPortOrDefault(ValidationContext context) {
         try {
             return context.getProperty(PORT).asInteger();
@@ -1550,6 +1632,7 @@ public class CustomIMAP extends AbstractProcessor {
 
     protected class ImapConfig {
         String host;
+        String sniHostname;
         int port;
         String user;
         String password;

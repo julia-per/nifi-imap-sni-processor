@@ -19,7 +19,7 @@ limitations under the License.
     <parent>
         <groupId>org.custom</groupId>
         <artifactId>nifi-imap-processor-bundle</artifactId>
-        <version>1.0.0</version>
+        <version>1.0.1</version>
     </parent>
 
     <artifactId>nifi-custom-processors</artifactId>

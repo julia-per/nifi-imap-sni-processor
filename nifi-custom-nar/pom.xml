@@ -19,18 +19,18 @@ limitations under the License.
     <parent>
         <groupId>org.custom</groupId>
         <artifactId>nifi-imap-processor-bundle</artifactId>
-        <version>1.0.0</version>
+        <version>1.0.1</version>
     </parent>
 
     <artifactId>nifi-custom-nar</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <packaging>nar</packaging>
 
     <dependencies>
         <dependency>
             <groupId>org.custom</groupId>
             <artifactId>nifi-custom-processors</artifactId>
-            <version>1.0.0</version>
+            <version>1.0.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.nifi</groupId>

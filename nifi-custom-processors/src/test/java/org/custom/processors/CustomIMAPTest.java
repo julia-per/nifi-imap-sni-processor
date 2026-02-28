@@ -651,4 +651,117 @@ public class CustomIMAPTest {
         String stateKey = processor.getStateKeyForFolder(config, "INBOX/Subfolder");
         assertEquals("lastUID_CUSTOMER_123_INBOX_Subfolder", stateKey);
     }
+
+    @Test
+    public void testSNIHostnameProperty() {
+        testRunner.setValidateExpressionUsage(false);
+        setupBaseProperties();
+        testRunner.setProperty(CustomIMAP.SNI_HOSTNAME, "mail.custom-domain.com");
+        testRunner.assertValid();
+
+        String sniValue = testRunner.getProcessContext().getProperty(CustomIMAP.SNI_HOSTNAME).getValue();
+        assertEquals("mail.custom-domain.com", sniValue);
+    }
+
+    @Test
+    public void testSNIWithEncryptionDisabled() {
+        testRunner.setValidateExpressionUsage(false);
+        setupBaseProperties();
+        testRunner.setProperty(CustomIMAP.USE_SSL, "false");
+        testRunner.setProperty(CustomIMAP.USE_TLS, "false");
+        testRunner.setProperty(CustomIMAP.PORT, "143");
+        testRunner.setProperty(CustomIMAP.SNI_HOSTNAME, "mail.custom-domain.com");
+
+        testRunner.assertValid();
+
+        assertEquals("143", testRunner.getProcessContext().getProperty(CustomIMAP.PORT).getValue());
+    }
+
+    @Test
+    public void testSNIWithSSL() {
+        setupBaseProperties();
+        testRunner.setProperty(CustomIMAP.USE_SSL, "true");
+        testRunner.setProperty(CustomIMAP.USE_TLS, "false");
+        testRunner.setProperty(CustomIMAP.SNI_HOSTNAME, "mail.custom-domain.com");
+        testRunner.assertValid();
+    }
+
+    @Test
+    public void testSNIWithTLS() {
+        setupBaseProperties();
+        testRunner.setProperty(CustomIMAP.USE_SSL, "false");
+        testRunner.setProperty(CustomIMAP.USE_TLS, "true");
+        testRunner.setProperty(CustomIMAP.SNI_HOSTNAME, "mail.custom-domain.com");
+        testRunner.assertValid();
+    }
+
+    @Test
+    public void testSNIEmptyString() {
+        setupBaseProperties();
+        testRunner.setProperty(CustomIMAP.SNI_HOSTNAME, "");
+        testRunner.assertValid();
+    }
+
+    @Test
+    public void testSNIWithExpressionLanguage() {
+        setupBaseProperties();
+        testRunner.setProperty(CustomIMAP.SNI_HOSTNAME, "${sni.fallback}");
+        testRunner.assertValid();
+    }
+
+    @Test
+    public void testIpAddressScenarios() {
+        testRunner.setValidateExpressionUsage(false);
+
+        setupBaseProperties();
+        testRunner.setProperty(CustomIMAP.HOST, "192.168.1.100");
+        testRunner.removeProperty(CustomIMAP.SNI_HOSTNAME);
+        testRunner.assertValid();
+
+        testRunner.setProperty(CustomIMAP.HOST, "192.168.1.100");
+        testRunner.setProperty(CustomIMAP.SNI_HOSTNAME, "mail.example.com");
+        testRunner.assertValid();
+
+        testRunner.setProperty(CustomIMAP.HOST, "imap.example.com");
+        testRunner.setProperty(CustomIMAP.SNI_HOSTNAME, "192.168.1.100");
+        testRunner.assertValid();
+
+        String[] ipv6Hosts = {
+                "::1",
+                "2001:db8::1",
+                "::",
+                "::ffff:192.168.1.1",
+                "[2001:db8::1]",
+                "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
+                "2001:db8:85a3:0:0:8a2e:370:7334",
+                "2001:db8:85a3::8a2e:370:7334",
+                "2001:db8::"
+        };
+
+        for (String ipv6 : ipv6Hosts) {
+            testRunner.setProperty(CustomIMAP.HOST, ipv6);
+            testRunner.removeProperty(CustomIMAP.SNI_HOSTNAME);
+            testRunner.assertValid();
+        }
+
+        String[] ipv6Snis = {
+                "::1",
+                "2001:db8::1",
+                "[2001:db8::1]"
+        };
+
+        for (String ipv6Sni : ipv6Snis) {
+            testRunner.setProperty(CustomIMAP.HOST, "imap.example.com");
+            testRunner.setProperty(CustomIMAP.SNI_HOSTNAME, ipv6Sni);
+            testRunner.assertValid();
+        }
+
+        testRunner.setProperty(CustomIMAP.HOST, "2001:db8::1");
+        testRunner.setProperty(CustomIMAP.SNI_HOSTNAME, "mail.example.com");
+        testRunner.assertValid();
+
+        testRunner.setProperty(CustomIMAP.HOST, "2001:db8::1");
+        testRunner.setProperty(CustomIMAP.SNI_HOSTNAME, "2001:db8::2");
+        testRunner.assertValid();
+    }
 }
